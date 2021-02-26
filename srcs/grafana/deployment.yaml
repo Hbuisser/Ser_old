@@ -1,0 +1,61 @@
+#PersistentVolumeClaim ?
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-grafana
+  namespace: default
+  labels:
+    app: grafana
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: img-grafana
+        volumeMounts:
+          - name: pv-grafana
+            mountPath: /root/grafana/data
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 3000
+      volumes:
+      - name: pv-grafana
+        persistentVolumeClaim:
+            claimName: pvc-grafana
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-grafana
+  annotations:
+    metallb.universe.tf/allow-shared-ip: unifi-addr
+spec:
+  selector:
+    app: grafana
+  type: LoadBalancer
+  ports:
+    - name: grafana
+      protocol: TCP
+      port: 3000
+      targetPort: 3000
+  loadBalancerIP: 192.168.99.232
